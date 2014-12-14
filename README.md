@@ -1,11 +1,13 @@
 seqLoGo
 =======
 
-seqLoGo is able to extract these information of sequence logos shown below, from quite a few of sequences.
+seqLoGo is able to extract these information for sequence motifs shown below
 
 * Base counts
 * GC contents (-gc option)
 * Compressed sequences (-str num option)
+
+from **quite a few of sequences**.
 
 About sequence logo in the field of biology, please refer http://weblogo.berkeley.edu.
 
