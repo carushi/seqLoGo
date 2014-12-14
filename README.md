@@ -1,7 +1,7 @@
 seqLoGo
 =======
 
-seqLoGo is able to extract the information of sequence logos from quite a few of sequences.
+seqLoGo is able to extract these information of sequence logos shown below, from quite a few of sequences.
 
 * Base counts
 * GC contents (-gc option)

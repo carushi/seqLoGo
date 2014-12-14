@@ -9,9 +9,9 @@ import (
 )
 
 var (
-	ifile  = flag.String("input_file", "", "read sequences from ifile")
+	ifile  = flag.String("input_file", "", "read sequences from input_file (defaults: Stdin)")
 	gcflag = flag.Bool("gc", false, "print gc contents")
-	strNum = flag.Int("str", 50, "compress all sequences and print only a number of strNum strings")
+	strNum = flag.Int("str", 50, "compress all sequences and print only a number of optimized strNum strings")
 )
 
 // window is the initial capacity of table.
