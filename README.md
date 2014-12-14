@@ -14,7 +14,9 @@ Previous sequence logo software products cannot deal with too many sequences.
 And seqLoGo provides reduced sequences which produce the same logo in the accuracy of (-str num).
 
 Please type
+```
 	% go get github.com/carushi/seqLoGo
+```
 and you can get a seqLoGo binary file in $GOPATH/bin.
 
 ### Future Plan
