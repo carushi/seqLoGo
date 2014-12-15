@@ -9,9 +9,11 @@ import (
 )
 
 var (
-	ifile  = flag.String("input_file", "", "read sequences from input_file (defaults: Stdin)")
-	gcflag = flag.Bool("gc", false, "print gc contents")
-	strNum = flag.Int("str", 50, "compress all sequences and print only a number of optimized strNum strings")
+	ifile       = flag.String("input_file", "", "read sequences from input_file (defaults: Stdin)")
+	gcflag      = flag.Bool("gc", false, "print gc contents")
+	anyCharType = flag.Bool("any", false, "count any characters")
+	readFasta = flag.Bool("fasta", false, "read fasta format")
+	strNum      = flag.Int("str", 0, "compress all sequences and print only a number of optimized strNum strings")
 )
 
 // window is the initial capacity of table.
@@ -39,8 +41,13 @@ var indexToBase = map[int]uint8{
 }
 
 type Table struct {
-	seqCount   int
-	charMatrix [][]int
+	seqCount    int
+	charMatrix  [][]int
+	maxCharType int
+}
+
+func (tab *Table) isBase() bool {
+	return (tab.maxCharType == 5)
 }
 
 func (tab *Table) setLength(nrow int) {
@@ -48,7 +55,7 @@ func (tab *Table) setLength(nrow int) {
 		narr := make([][]int, nrow)
 		copy(narr, tab.charMatrix)
 		for i := len(tab.charMatrix); i < nrow; i++ {
-			narr[i] = make([]int, 5)
+			narr[i] = make([]int, tab.maxCharType)
 		}
 		tab.charMatrix = narr
 	}
@@ -68,7 +75,11 @@ func (tab *Table) addChar(r int, l int) {
 func (tab *Table) addSequence(str string) {
 	tab.setLength(len(str))
 	for i := len(str) - 1; i >= 0; i-- {
-		tab.addChar(i, baseToIndex[str[i]])
+		if tab.isBase() {
+			tab.addChar(i, baseToIndex[str[i]])
+		} else {
+			tab.addChar(i, int(str[i]))
+		}
 	}
 	tab.seqCount += 1
 }
@@ -76,35 +87,69 @@ func (tab *Table) addSequence(str string) {
 func (tab *Table) printGCcontents() {
 	fmt.Printf("GC%%")
 	for _, temp := range tab.charMatrix {
-		fmt.Printf("\t%f", (float64(temp[1]+temp[2]) / float64(sum(temp))))
+		fmt.Printf("\t%f", (float64(temp[2]+temp[3]) * 100.0 / float64(sum(temp))))
 	}
 	fmt.Println("")
 }
 
+func (tab *Table) getAppearedChar() []int {
+	charList := make([]int, 0, tab.maxCharType)
+	for i := 0; i < tab.maxCharType; i++ {
+		for _, temp := range tab.charMatrix {
+			if temp[i] == 0 {
+				continue
+			}
+			charList = append(charList, i)
+			break
+		}
+	}
+	return charList
+}
+
+func (tab *Table) printHead() []int {
+	if tab.isBase() {
+		fmt.Println("index\tN\tA\tC\tG\tT")
+		return []int{0, 1, 2, 3, 4}
+	} else {
+		charList := tab.getAppearedChar()
+		fmt.Printf("index")
+		for _, i := range charList {
+			fmt.Printf("\t%v", string(i))
+		}
+		fmt.Println("")
+		return charList
+	}
+}
+
 func (tab *Table) printCounts() {
-	fmt.Println("index\tA\tC\tG\tT")
+	charList := tab.printHead()
 	for i, temp := range tab.charMatrix {
 		fmt.Printf("%v", i)
-		for _, num := range temp {
-			fmt.Printf("\t%v", num)
+		for _, index := range charList {
+			fmt.Printf("\t%v", temp[index])
 		}
 		fmt.Println("")
 	}
 }
 
-func (tab *Table) extractSeq() string {
-	chars := make([]uint8, len(tab.charMatrix))
-	for i, temp := range tab.charMatrix {
+func (tab *Table) extractSeq(freq [][]int) (string, [][]int) {
+	chars := make([]uint8, len(freq))
+	for i, temp := range freq {
 		chars[i] = uint8('-')
 		for j := range temp {
-			if temp[j] > 0 {
-				chars[i] = indexToBase[j]
-				temp[j] -= 1
-				break
+			if temp[j] == 0 {
+				continue
 			}
+			if tab.isBase() {
+				chars[i] = indexToBase[j]
+			} else {
+				chars[i] = uint8(j)
+			}
+			temp[j] -= 1
+			break
 		}
 	}
-	return string(chars)
+	return string(chars), freq
 }
 
 func min(a int, b int) int {
@@ -114,35 +159,57 @@ func min(a int, b int) int {
 	return a
 }
 
-func (tab *Table) setTableForOutput(count int) {
-	for _, temp := range tab.charMatrix {
+func (tab *Table) getCompressedFreqTable(count int) [][]int {
+	nmat := make([][]int, len(tab.charMatrix))
+	copy(nmat, tab.charMatrix)
+	for _, temp := range nmat {
 		for j := range temp {
 			temp[j] = (count * temp[j]) / tab.seqCount
 		}
 	}
+	return nmat
 }
 
 func (tab *Table) printStrings(strNum int) { // printStrings
 	count := min(strNum, tab.seqCount)
-	// Consider making a copy of table
-	tab.setTableForOutput(count)
-	for i := 0; i < count; i++ {
-		str := tab.extractSeq()
+	freq := tab.getCompressedFreqTable(count)
+	for i, str := 0, ""; i < count; i++ {
+		str, freq = tab.extractSeq(freq)
 		fmt.Println(str)
 	}
 }
 
 func (tab *Table) output(gcflag bool, strNum int) {
 	if gcflag {
-		tab.printGCcontents()
+		if tab.isBase() {
+			tab.printGCcontents()
+		} else {
+			fmt.Println("Error: Cannot apply --gc with --any.")
+		}
 	} else if strNum > 0 {
 		tab.printStrings(strNum)
 	} else {
 		tab.printCounts()
+		// DrawLoGo(tab.charMatrix, "")
 	}
 }
 
-func scanFasta(ifile string, tab *Table) error {
+func scanFasta(scanner (*bufio.Scanner), tab *Table) error {
+	str := ""
+	for scanner.Scan() {
+		tstr := scanner.Text()
+		if len(tstr) > 0 && tstr[0] == '>' {
+			tab.addSequence(str)
+			str = ""
+			continue
+		}
+		str += tstr
+	}
+	tab.addSequence(str)
+	return scanner.Err()
+}
+
+func scanText(ifile string, readFasta bool, tab *Table) error {
 	var fp *os.File
 	var err error
 	if len(ifile) > 0 {
@@ -154,22 +221,34 @@ func scanFasta(ifile string, tab *Table) error {
 		fp = os.Stdin
 	}
 	scanner := bufio.NewScanner(fp)
-	for scanner.Scan() {
-		tab.addSequence(scanner.Text())
+	if readFasta {
+		return scanFasta(scanner, tab)
+	} else {
+		for scanner.Scan() {
+			tab.addSequence(scanner.Text())
+		}
+		return scanner.Err()
 	}
-	return scanner.Err()
 }
 
-func newTable() *Table {
-	return &Table{
-		charMatrix: make([][]int, 0, window),
+func newTable(anyCharType bool) *Table {
+	if anyCharType {
+		return &Table{
+			charMatrix:  make([][]int, 0, window),
+			maxCharType: 256,
+		}
+	} else {
+		return &Table{
+			charMatrix:  make([][]int, 0, window),
+			maxCharType: 5,
+		}
 	}
 }
 
 func main() {
 	flag.Parse()
-	tab := newTable()
-	if err := scanFasta(*ifile, tab); err != nil {
+	tab := newTable(*anyCharType)
+	if err := scanText(*ifile, *readFasta, tab); err != nil {
 		log.Fatal(err)
 	}
 	tab.output(*gcflag, *strNum)

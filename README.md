@@ -5,6 +5,7 @@ seqLoGo is able to extract these information for sequence motifs shown below
 
 * Base counts
 * GC contents (-gc option)
+* Amino acid or any characters counts (-any option)
 * Compressed sequences (-str num option)
 
 from **quite a few of sequences**.
@@ -20,6 +21,14 @@ Please type
 	% go get github.com/carushi/seqLoGo
 ```
 and you can get a seqLoGo binary file in $GOPATH/bin.
+
+
+Here is an example.
+```
+	% seqLoGo -input_file temp.txt -gc
+	% seqLoGo -input_file temp.fa -any -fasta
+	% seqLoGo -any -str 20  (-> Stdin)
+```
 
 ### Future Plan
 
