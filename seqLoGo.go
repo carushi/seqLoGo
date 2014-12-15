@@ -40,17 +40,17 @@ var indexToBase = map[int]uint8{
 	4: 'T',
 }
 
-type Table struct {
+type table struct {
 	seqCount    int
 	charMatrix  [][]int
 	maxCharType int
 }
 
-func (tab *Table) isBase() bool {
+func (tab *table) isBase() bool {
 	return (tab.maxCharType == 5)
 }
 
-func (tab *Table) setLength(nrow int) {
+func (tab *table) setLength(nrow int) {
 	if nrow >= len(tab.charMatrix) {
 		narr := make([][]int, nrow)
 		copy(narr, tab.charMatrix)
@@ -68,11 +68,11 @@ func sum(array []int) (a int) {
 	return
 }
 
-func (tab *Table) addChar(r int, l int) {
-	tab.charMatrix[r][l] += 1
+func (tab *table) addChar(r int, l int) {
+	tab.charMatrix[r][l]++
 }
 
-func (tab *Table) addSequence(str string) {
+func (tab *table) addSequence(str string) {
 	tab.setLength(len(str))
 	for i := len(str) - 1; i >= 0; i-- {
 		if tab.isBase() {
@@ -81,10 +81,10 @@ func (tab *Table) addSequence(str string) {
 			tab.addChar(i, int(str[i]))
 		}
 	}
-	tab.seqCount += 1
+	tab.seqCount++
 }
 
-func (tab *Table) printGCcontents() {
+func (tab *table) printGCcontents() {
 	fmt.Printf("GC%%")
 	for _, temp := range tab.charMatrix {
 		fmt.Printf("\t%f", (float64(temp[2]+temp[3]) * 100.0 / float64(sum(temp))))
@@ -92,7 +92,7 @@ func (tab *Table) printGCcontents() {
 	fmt.Println("")
 }
 
-func (tab *Table) getAppearedChar() []int {
+func (tab *table) getAppearedChar() []int {
 	charList := make([]int, 0, tab.maxCharType)
 	for i := 0; i < tab.maxCharType; i++ {
 		for _, temp := range tab.charMatrix {
@@ -106,22 +106,21 @@ func (tab *Table) getAppearedChar() []int {
 	return charList
 }
 
-func (tab *Table) printHead() []int {
+func (tab *table) printHead() []int {
 	if tab.isBase() {
 		fmt.Println("index\tN\tA\tC\tG\tT")
 		return []int{0, 1, 2, 3, 4}
-	} else {
-		charList := tab.getAppearedChar()
-		fmt.Printf("index")
-		for _, i := range charList {
-			fmt.Printf("\t%v", string(i))
-		}
-		fmt.Println("")
-		return charList
 	}
+	charList := tab.getAppearedChar()
+	fmt.Printf("index")
+	for _, i := range charList {
+		fmt.Printf("\t%v", string(i))
+	}
+	fmt.Println("")
+	return charList
 }
 
-func (tab *Table) printCounts() {
+func (tab *table) printCounts() {
 	charList := tab.printHead()
 	for i, temp := range tab.charMatrix {
 		fmt.Printf("%v", i)
@@ -132,7 +131,7 @@ func (tab *Table) printCounts() {
 	}
 }
 
-func (tab *Table) extractSeq(freq [][]int) (string, [][]int) {
+func (tab *table) extractSeq(freq [][]int) (string, [][]int) {
 	chars := make([]uint8, len(freq))
 	for i, temp := range freq {
 		chars[i] = uint8('-')
@@ -145,7 +144,7 @@ func (tab *Table) extractSeq(freq [][]int) (string, [][]int) {
 			} else {
 				chars[i] = uint8(j)
 			}
-			temp[j] -= 1
+			temp[j]--
 			break
 		}
 	}
@@ -159,7 +158,7 @@ func min(a int, b int) int {
 	return a
 }
 
-func (tab *Table) getCompressedFreqTable(count int) [][]int {
+func (tab *table) getCompressedFreqTable(count int) [][]int {
 	nmat := make([][]int, len(tab.charMatrix))
 	copy(nmat, tab.charMatrix)
 	for _, temp := range nmat {
@@ -170,7 +169,7 @@ func (tab *Table) getCompressedFreqTable(count int) [][]int {
 	return nmat
 }
 
-func (tab *Table) printStrings(strNum int) { // printStrings
+func (tab *table) printStrings(strNum int) { // printStrings
 	count := min(strNum, tab.seqCount)
 	freq := tab.getCompressedFreqTable(count)
 	for i, str := 0, ""; i < count; i++ {
@@ -179,7 +178,7 @@ func (tab *Table) printStrings(strNum int) { // printStrings
 	}
 }
 
-func (tab *Table) output(gcflag bool, strNum int) {
+func (tab *table) output(gcflag bool, strNum int) {
 	if gcflag {
 		if tab.isBase() {
 			tab.printGCcontents()
@@ -194,7 +193,7 @@ func (tab *Table) output(gcflag bool, strNum int) {
 	}
 }
 
-func scanFasta(scanner (*bufio.Scanner), tab *Table) error {
+func scanFasta(scanner (*bufio.Scanner), tab *table) error {
 	str := ""
 	for scanner.Scan() {
 		tstr := scanner.Text()
@@ -209,7 +208,7 @@ func scanFasta(scanner (*bufio.Scanner), tab *Table) error {
 	return scanner.Err()
 }
 
-func scanText(ifile string, readFasta bool, tab *Table) error {
+func scanText(ifile string, readFasta bool, tab *table) error {
 	var fp *os.File
 	var err error
 	if len(ifile) > 0 {
@@ -223,25 +222,23 @@ func scanText(ifile string, readFasta bool, tab *Table) error {
 	scanner := bufio.NewScanner(fp)
 	if readFasta {
 		return scanFasta(scanner, tab)
-	} else {
-		for scanner.Scan() {
-			tab.addSequence(scanner.Text())
-		}
-		return scanner.Err()
 	}
+	for scanner.Scan() {
+		tab.addSequence(scanner.Text())
+	}
+	return scanner.Err()
 }
 
-func newTable(anyCharType bool) *Table {
+func newTable(anyCharType bool) *table {
 	if anyCharType {
-		return &Table{
+		return &table{
 			charMatrix:  make([][]int, 0, window),
 			maxCharType: 256,
 		}
-	} else {
-		return &Table{
-			charMatrix:  make([][]int, 0, window),
-			maxCharType: 5,
-		}
+	}
+	return &table{
+		charMatrix:  make([][]int, 0, window),
+		maxCharType: 5,
 	}
 }
 
