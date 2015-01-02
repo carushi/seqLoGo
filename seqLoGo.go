@@ -1,3 +1,11 @@
+// ----------------------------
+// Copyright (C) 2014 Carushi
+// ----------------------------
+// This program is free software; you can redistribute it and/or
+// modify it under the terms of the GNU General Public License
+// version 3 as published by the Free Software Foundation.
+// ----------------------------
+
 package main
 
 import (
@@ -33,7 +41,7 @@ var baseToIndex = map[uint8]int{
 }
 
 var indexToBase = map[int]uint8{
-	0: 'N',
+	0: '-',
 	1: 'A',
 	2: 'C',
 	3: 'G',
